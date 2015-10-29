@@ -1,14 +1,24 @@
 #!/usr/bin/env python
 
-
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
 from pymongo import MongoClient
+import logging
+from optparse import OptionParser
+
+logger=logging.getlogger(__name__)
+
+
 
 class PrototypeAction:
+    """
+        Override this to create new actions for the server to take
+    """
     def __init__(self, handler):
         self.handler=handler
     def action(self):
+        """
+            Called when
+        """
         print "In Prototype Action. Path Not Recognized."
         self.handler._set_headers()
         self.handler.wfile.write("<html><body><h1>Reached Prototype. Improperly Formatted</h1></body></html>")
@@ -111,9 +121,10 @@ GET_ROUTES= {
 
 
 class CASHandler(BaseHTTPRequestHandler):
-    client = MongoClient('localhost', 27017)
+    client = MongoClient('127.0.0.1', 27017)
     osf_db = client['osf20130903']
     user_collection = osf_db['user']
+    logger=getLogger("CASHandler")
 
     def _set_normal_header(self):
         self.send_response(200)
@@ -176,19 +187,19 @@ class CASHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
 def run(server_class=HTTPServer, handler_class=CASHandler, port=8080):
-
-
-
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print 'Starting FakecasServer...'
+    logger.info("Starting FakeCAS server...")
     httpd.serve_forever()
     client.disconnect()
 
 if __name__ == "__main__":
-    from sys import argv
 
-    if len(argv) == 2:
-        run(port=int(argv[1]))
-    else:
-        run()
+    parser = OptionParser()
+    parser.add_option("-p", "--port", dest="port",
+                      help="Port to run server on", metavar="PORT", default=8080)
+    parser.add_option("-f", "--file", dest="file",
+                      help="Logging File Name", metavar="FILE", default="fakecas.log")
+    (options, args) = parser.parse_args()
+    logging.basicConfig(filename=options.file,level=logging.DEBUG)
+    run(port=options.port)
