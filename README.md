@@ -26,11 +26,12 @@ python fakecas.py -p 9000
 
 ### Changing Log file name
 
-##Future updates
+~~~ bash
+python fakecas.py --file=log.log
+~~~
 
-* Proper logging
-* Program options
-* Cleanup
+or 
 
-
-## How to 
+~~~ bash
+python fakecas.py -f log.log
+~~~

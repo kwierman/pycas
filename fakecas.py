@@ -5,7 +5,7 @@ from pymongo import MongoClient
 import logging
 from optparse import OptionParser
 
-logger=logging.getlogger(__name__)
+logger=logging.getLogger(__name__)
 
 
 
@@ -121,12 +121,14 @@ GET_ROUTES= {
 
 
 class CASHandler(BaseHTTPRequestHandler):
-    client = MongoClient('127.0.0.1', 27017)
+
+    client = MongoClient("127.0.01.1", 27017)
     osf_db = client['osf20130903']
     user_collection = osf_db['user']
-    logger=getLogger("CASHandler")
+    logger=logging.getLogger("CASHandler")  
 
     def _set_normal_header(self):
+        self.logger.info("Setting Normal Header")
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -136,6 +138,7 @@ class CASHandler(BaseHTTPRequestHandler):
         self.end_headers()
     def _set_xml_header(self):
         self.send_response(200)
+        self.logger.info("Setting XML Header")
         self.send_header('Content-type', 'text/xml')
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Range, Content-Type, Authorization, Cache-Control, X-Requested-With")
@@ -143,6 +146,7 @@ class CASHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-control", "no-store, no-cache, must-revalidate, max-age=0")
         self.end_headers()
     def _set_json_header(self):
+        self.logger.info("Setting JSON Header")
         self.send_response(200)
         self.send_header('Content-type', 'text/json')
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -168,7 +172,7 @@ class CASHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self._set_params()
 
-        print "Getting: ", self.parsed_path
+        self.logger.info("GET: {}".format( self.parsed_path) )
         action = GET_ROUTES[self.parsed_path ](self)
         #self.wfile.write("<html><body><h1>hi!</h1></body></html>")
         action.action()
@@ -179,9 +183,11 @@ class CASHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Doesn't do anything with posted data
         self._set_headers()
+        self.logger.info("POST:")
         self.wfile.write("<html><body><h1>POST!</h1></body></html>")
 
     def do_OPTIONS(self):
+        self.logger.info("OPTIONS: {}".format("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE") )
         self.send_response(204)
         self.send_header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE")
         self.end_headers()
