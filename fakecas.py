@@ -127,6 +127,7 @@ POST_ROUTES= {'/': PrototypeAction,
 GET_ROUTES= {
     '/' : PrototypeAction,
     "/favicon.ico" : PrototypeAction,
+    "/login":LoginAction,
     "/logout":LogoutAction,
     "/oauth2/profile":OAuthAction,
     "/p3/serviceValidate":ServiceValidateAction
