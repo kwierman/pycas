@@ -5,6 +5,10 @@ from pymongo import MongoClient
 import logging
 from optparse import OptionParser
 
+from sys import version as python_version
+from cgi import parse_header, parse_multipart
+import cgi
+
 logger=logging.getLogger(__name__)
 
 
@@ -43,6 +47,15 @@ class LoginAction(PrototypeAction):
             At login, the fakecas server pulls out the redirect URL with the ticket at the end 
             ticket=<username>
         """
+        self.redirect_url =  self.handler.params["service"]
+        print self.handler.params
+        if "?" in self.redirect_url:
+            self.redirect_url += "&ticket="+"kwierman@gmail.com"
+        else:
+            self.redirect_url+="?ticket="+"kwierman@gmail.com"
+        self.redirect_to(self.redirect_url)
+
+
         try:
 
             self.username     =  self.handler.params["username"]
@@ -64,8 +77,6 @@ class LoginAction(PrototypeAction):
 class LogoutAction(PrototypeAction):
     def action(self):
         try:
-
-            self.username     =  self.handler.params["username"]
             self.redirect_url =  self.handler.params["service"]
         except KeyError:
             print "Improperly Formatted Request: "
@@ -93,8 +104,10 @@ class OAuthAction(PrototypeAction):
 
 class ServiceValidateAction(PrototypeAction):
     def action(self):
+        logger.info("In prototype action")
         self.username     =  self.handler.params["ticket"]
         user = self.handler.user_collection.find_one({"emails": self.username})
+
         self.handler._set_xml_header()
         ret='<?xml version="1.0" encoding="UTF-8"?><cas:serviceResponse xmlns:cas="{}"><cas:authenticationSuccess><cas:user>{}</cas:user><cas:attributes><cas:isFromNewLogin>{}</cas:isFromNewLogin><cas:authenticationDate>{}</cas:authenticationDate><cas:givenName>{}</cas:givenName><cas:familyName>{}</cas:familyName><cas:longTermAuthenticationRequestTokenUsed>false</cas:longTermAuthenticationRequestTokenUsed><accessToken>{}</accessToken><username>{}</username></cas:attributes></cas:authenticationSuccess></cas:serviceResponse>'.format( "http://www.yale.edu/tp/cas",
                      user["_id"],
@@ -108,10 +121,10 @@ class ServiceValidateAction(PrototypeAction):
 
 
 
-POST_ROUTES= {"/login":LoginAction}
+POST_ROUTES= {'/': PrototypeAction,
+"/login":LoginAction}
 
 GET_ROUTES= {
-    "/login":LoginAction,
     '/' : PrototypeAction,
     "/favicon.ico" : PrototypeAction,
     "/logout":LogoutAction,
@@ -174,17 +187,20 @@ class CASHandler(BaseHTTPRequestHandler):
 
         self.logger.info("GET: {}".format( self.parsed_path) )
         action = GET_ROUTES[self.parsed_path ](self)
-        #self.wfile.write("<html><body><h1>hi!</h1></body></html>")
         action.action()
 
     def do_HEAD(self):
         self._set_headers()
         
     def do_POST(self):
-        # Doesn't do anything with posted data
-        self._set_headers()
-        self.logger.info("POST:")
-        self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+        self._set_params()
+
+        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+        self.logger.info("POST: {}".format( self.parsed_path) )
+        action = POST_ROUTES[self.parsed_path ](self)
+        #self.wfile.write("<html><body><h1>hi!</h1></body></html>")
+        action.action()
+
 
     def do_OPTIONS(self):
         self.logger.info("OPTIONS: {}".format("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE") )
@@ -207,5 +223,5 @@ if __name__ == "__main__":
     parser.add_option("-f", "--file", dest="file",
                       help="Logging File Name", metavar="FILE", default="fakecas.log")
     (options, args) = parser.parse_args()
-    logging.basicConfig(filename=options.file,level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)#filename=options.file,
     run(port=options.port)
