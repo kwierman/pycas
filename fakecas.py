@@ -47,21 +47,19 @@ class LoginAction(PrototypeAction):
             At login, the fakecas server pulls out the redirect URL with the ticket at the end 
             ticket=<username>
         """
-        self.redirect_url =  self.handler.params["service"]
-        print self.handler.params
-        if "?" in self.redirect_url:
-            self.redirect_url += "&ticket="+"kwierman@gmail.com"
-        else:
-            self.redirect_url+="?ticket="+"kwierman@gmail.com"
-        self.redirect_to(self.redirect_url)
 
+        self.redirect_url =  self.handler.params["service"]
 
         try:
-
-            self.username     =  self.handler.params["username"]
+            
+            if bool(self.handler.params['auto']):
+                self.username = str(self.handler.postvars["username"][0])
+            else:
+                self.username     =  self.handler.params["username"]
             self.redirect_url =  self.handler.params["service"]
         except KeyError:
             print "Improperly Formatted Request: "
+            print self.handler.params
             self.handler._set_headers()
             self.handler.wfile.write("<html><body><h1>Improperly Formatted Request</h1></body></html>")
             return
@@ -127,7 +125,6 @@ POST_ROUTES= {'/': PrototypeAction,
 GET_ROUTES= {
     '/' : PrototypeAction,
     "/favicon.ico" : PrototypeAction,
-    "/login":LoginAction,
     "/logout":LogoutAction,
     "/oauth2/profile":OAuthAction,
     "/p3/serviceValidate":ServiceValidateAction
@@ -196,10 +193,18 @@ class CASHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._set_params()
 
-        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
         self.logger.info("POST: {}".format( self.parsed_path) )
+
+        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+        if ctype == 'multipart/form-data':
+            self.postvars = cgi.parse_multipart(self.rfile, pdict)
+        elif ctype == 'application/x-www-form-urlencoded':
+            length = int(self.headers.getheader('content-length'))
+            self.postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        else:
+            self.postvars = {}
+
         action = POST_ROUTES[self.parsed_path ](self)
-        #self.wfile.write("<html><body><h1>hi!</h1></body></html>")
         action.action()
 
 
