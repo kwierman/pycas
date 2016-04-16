@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import xml.etree.cElementTree as ET
 from optparse import OptionParser
 from pymongo import MongoClient
 import logging
@@ -6,9 +7,9 @@ import urllib
 import flask
 import json
 
-logger=logging.getLogger(__name__)
+logger=logging.getLogger("fakecas")
 
-app = flask.Flask(__name__)
+app = flask.Flask("fakecas")
 
 client = MongoClient("127.0.01.1", 27017)
 osf_db = client['osf20130903']
@@ -88,18 +89,24 @@ def validate_service():
     logger.info("In prototype action")
     username = flask.request.args['ticket']
     user = user_collection.find_one({'emails': username})
+    root = ET.Element('cas:serviceResponse')
+    root.attrib['xmlns:cas'] = "http://www.yale.edu/tp/cas"
+    auth = ET.SubElement(root, 'cas:authenticationSuccess')
+    ET.SubElement(auth, 'cas:user').text = user['_id']
+    attr = ET.SubElement(auth, 'cas:attributes')
+    ET.SubElement(attr, 'cas:isFromNewLogin').text='true'
+    ET.SubElement(attr, 'cas:authenticationDate').text='eh'
+    ET.SubElement(attr, 'cas:givenName').text=user['given_name']
+    ET.SubElement(attr, 'cas:familyName').text=user['family_name']
 
-    ret='<?xml version="1.0" encoding="UTF-8"?><cas:serviceResponse xmlns:cas="{}"><cas:authenticationSuccess><cas:user>{}</cas:user><cas:attributes><cas:isFromNewLogin>{}</cas:isFromNewLogin><cas:authenticationDate>{}</cas:authenticationDate><cas:givenName>{}</cas:givenName><cas:familyName>{}</cas:familyName><cas:longTermAuthenticationRequestTokenUsed>false</cas:longTermAuthenticationRequestTokenUsed><accessToken>{}</accessToken><username>{}</username></cas:attributes></cas:authenticationSuccess></cas:serviceResponse>'.format( "http://www.yale.edu/tp/cas",
-                 user["_id"],
-                 "true",
-                 "Eh",
-                 user["given_name"],
-                 user["family_name"],
-                 user["_id"],
-                 user["username"] )
-    resp = flask.Response(ret)
+    ET.SubElement(attr, 'cas:longTermAuthenticationRequestTokenUsed').text = 'true'
+    ET.SubElement(attr, 'accessToken').text=user['_id']
+    ET.SubElement(attr, 'username').text=user['username']
+
+    resp = flask.Response(ET.tostring(root))
     set_xml_headers(resp)
     return resp
+
 
 
 if __name__ == "__main__":
